@@ -44,12 +44,15 @@ const App: React.FC = () => {
   const [playerToContact, setPlayerToContact] = useState<Player | null>(null);
   const [contactedPlayerIds, setContactedPlayerIds] = useState<Set<number>>(new Set());
   const [notifications, setNotifications] = useState<string[]>([]);
-  const [showCookieBanner, setShowCookieBanner] = useState(false); // YENİ
+  const [showCookieBanner, setShowCookieBanner] = useState(false);
+  const [isAdminPath, setIsAdminPath] = useState(false);
 
 
   useEffect(() => {
+    if (window.location.pathname === '/admin') {
+      setIsAdminPath(true);
+    }
     setPlayers(PLAYERS_DATA);
-    // YENİ: Çerez onay durumunu kontrol et
     const consent = localStorage.getItem('cookie_consent');
     if (consent === null) {
         setShowCookieBanner(true);
@@ -59,7 +62,6 @@ const App: React.FC = () => {
   const applyFilters = useCallback(() => {
     let result = players;
 
-    // YÖNETİCİ OLMAYAN KULLANICILAR SADECE AKTİF PROFİLLERİ GÖRÜR
     if (userSession.role !== UserRole.Admin) {
         result = result.filter(player => player.status === 'active');
     }
@@ -140,6 +142,9 @@ const App: React.FC = () => {
     
     setUserSession({ role, consented: true });
     setIsAuthenticated(true);
+    if (role === UserRole.Admin) {
+      setIsAdminPath(true);
+    }
   };
 
   const handleRegisterSuccess = () => {
@@ -158,6 +163,11 @@ const App: React.FC = () => {
     setUserSession({ role: UserRole.Talent, consented: false });
     setContactedPlayerIds(new Set()); 
     setNotifications([]);
+    // Redirect to home if logging out from admin path
+    if (window.location.pathname === '/admin') {
+      window.history.pushState({}, '', '/');
+      setIsAdminPath(false);
+    }
   };
 
   const handleInitiateContact = (player: Player) => {
@@ -182,7 +192,6 @@ const App: React.FC = () => {
       }
   };
   
-  // YÖNETİCİ FONKSİYONLARI
   const handleSuspendPlayer = (playerId: number) => {
     setPlayers(players.map(p => 
         p.id === playerId 
@@ -197,7 +206,6 @@ const App: React.FC = () => {
       }
   };
 
-  // YENİ: Çerez onayı işleyicileri
   const handleAcceptCookies = () => {
       localStorage.setItem('cookie_consent', 'true');
       setShowCookieBanner(false);
@@ -211,7 +219,7 @@ const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-    return <Auth onLogin={handleLoginSuccess} onRegister={handleRegisterSuccess} />;
+    return <Auth onLogin={handleLoginSuccess} onRegister={handleRegisterSuccess} isAdminLogin={isAdminPath} />;
   }
   
   return (
