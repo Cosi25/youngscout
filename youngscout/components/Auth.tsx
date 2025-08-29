@@ -1,9 +1,10 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { UserRole } from '../types';
 
 interface AuthProps {
     onLogin: (role: UserRole) => void;
     onRegister: () => void;
+    isAdminLogin?: boolean;
 }
 
 const SoccerBallIcon = () => (
@@ -21,7 +22,7 @@ const AuthInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props)
     />
 );
 
-export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
+export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister, isAdminLogin = false }) => {
     const [authMode, setAuthMode] = useState<'login' | 'register' | 'verify'>('login');
     const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Talent);
     const [email, setEmail] = useState('');
@@ -30,6 +31,13 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        if (isAdminLogin) {
+            setSelectedRole(UserRole.Admin);
+            setAuthMode('login');
+        }
+    }, [isAdminLogin]);
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -37,14 +45,14 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
 
         setTimeout(() => {
             if (authMode === 'login') {
-                if (selectedRole === UserRole.Talent && email === 'talent@test.com' && password === 'password123') {
+                const roleToLogin = isAdminLogin ? UserRole.Admin : selectedRole;
+                if (roleToLogin === UserRole.Talent && email === 'talent@test.com' && password === 'password123') {
                     onLogin(UserRole.Talent);
-                } else if (selectedRole === UserRole.Scout && email === 'scout@test.com' && password === 'password123') {
+                } else if (roleToLogin === UserRole.Scout && email === 'scout@test.com' && password === 'password123') {
                     onLogin(UserRole.Scout);
-                } else if (selectedRole === UserRole.Admin && email === 'admin@test.com' && password === 'password123') {
+                } else if (roleToLogin === UserRole.Admin && email === 'admin@test.com' && password === 'password123') {
                     onLogin(UserRole.Admin);
-                }
-                else {
+                } else {
                     setError('Geçersiz e-posta veya şifre.');
                 }
             } else if (authMode === 'register') {
@@ -106,15 +114,15 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
         return (
             <>
                 <h2 className="text-2xl font-semibold text-gray-100 mb-6">
-                    {authMode === 'login' ? 'Hoş Geldiniz!' : 'Yeni Hesap Oluştur'}
+                    {isAdminLogin ? 'Yönetici Girişi' : (authMode === 'login' ? 'Hoş Geldiniz!' : 'Yeni Hesap Oluştur')}
                 </h2>
-                {authMode === 'login' && <RoleSelector />}
+                {authMode === 'login' && !isAdminLogin && <RoleSelector />}
                 <div className="space-y-4">
                     <AuthInput type="email" placeholder="E-posta Adresi" value={email} onChange={(e) => setEmail(e.target.value)} required aria-label="E-posta Adresi" />
                     <AuthInput type="password" placeholder="Şifre" value={password} onChange={(e) => setPassword(e.target.value)} required aria-label="Şifre" />
                 </div>
                 <p className="text-xs text-gray-500 mt-4 text-center">
-                    {authMode === 'login' && `Test: talent@, scout@ (şifre: password123)`}
+                    {authMode === 'login' && (isAdminLogin ? 'Test: admin@test.com (şifre: password123)' : 'Test: talent@, scout@ (şifre: password123)')}
                 </p>
                 <button type="submit" disabled={isLoading} className="w-full mt-6 bg-brand-primary text-white font-bold py-3 rounded-lg transition-colors hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed">
                     {isLoading ? (authMode === 'login' ? 'Giriş Yapılıyor...' : 'Kayıt Olunuyor...') : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
@@ -124,11 +132,13 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
     };
 
     const renderFooter = () => {
+        if (isAdminLogin) return null;
+
         if (authMode === 'login') {
             return (
                 <p className="text-center text-gray-400">
                     Hesabınız yok mu?{' '}
-                    <button onClick={() => setAuthMode('register')} className="font-semibold text-brand-primary hover:underline">
+                    <button onClick={() => { setAuthMode('register'); setError(null); }} className="font-semibold text-brand-primary hover:underline">
                         Kayıt Olun
                     </button>
                 </p>
@@ -138,7 +148,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
             return (
                 <p className="text-center text-gray-400">
                     Zaten bir hesabınız var mı?{' '}
-                    <button onClick={() => setAuthMode('login')} className="font-semibold text-brand-primary hover:underline">
+                    <button onClick={() => { setAuthMode('login'); setError(null); }} className="font-semibold text-brand-primary hover:underline">
                         Giriş Yapın
                     </button>
                 </p>
@@ -157,7 +167,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
                             Young<span className="text-brand-primary">Scout</span>
                         </h1>
                     </div>
-                     <p className="text-gray-400 mt-2">Geleceğin yıldızlarını keşfetmeye başlayın.</p>
+                     <p className="text-gray-400 mt-2">
+                        {isAdminLogin ? 'Lütfen yönetici kimlik bilgilerinizle giriş yapın.' : 'Geleceğin yıldızlarını keşfetmeye başlayın.'}
+                     </p>
                 </div>
 
                 <div className="bg-gray-900/50 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl p-8">
